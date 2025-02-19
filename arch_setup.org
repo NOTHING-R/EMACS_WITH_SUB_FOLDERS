@@ -1,0 +1,122 @@
+#+TITLE: ARCH LINUX SET UP 
+#+AUTHOR: NOTHING
+#+STARTUP: showeverything
+#+OPTIONS: toc:2
+* TABLE OF CONTENT :toc:
+- [[#exwm-set-up-xelb-connection-problem][EXWM SET UP [XELB] CONNECTION PROBLEM]]
+  - [[#command-and-setup][COMMAND AND SETUP]]
+- [[#setup-of-qemu-for-lab][SETUP OF QEMU FOR LAB]]
+  - [[#step-1-install-required-packages][Step 1: Install Required Packages]]
+  - [[#package-explanation][Package Explanation]]
+  - [[#step-2-enable-and-start-services][Step 2: Enable and Start Services]]
+  - [[#step-3-add-user-to-the-libvirt-and-kvm-groups][Step 3: Add User to the libvirt and kvm Groups]]
+  - [[#step-4-configure-networking-optional][Step 4: Configure Networking (Optional)]]
+  - [[#step-5-verify-installation][Step 5: Verify Installation]]
+  - [[#chatgpt-said][ChatGPT said]]
+
+* EXWM SET UP [XELB] CONNECTION PROBLEM
+** COMMAND AND SETUP
+#+begin_src sh
+echo $DISPLAY
+#+end_src
+It should say 0. If not then set the display variable to 0. If not then ask to chatgpt what to do next.
+
+Next: 
+#+begin_src sh
+echo $XAUTHORITY
+#+end_src 
+Output should look like /home/<your username>/.Xauthority
+
+Next:
+#+begin_src sh
+xhost
+#+end_src
+Output: access control enabled, only authorized clients can connect
+
+Next:
+Check for your display manager 
+#+begin_src sh
+systemctl status display-manager.service
+#+end_src
+If lightdm
+#+begin_src sh
+nano ~/.xprofile
+xhost +SI:localuser:$USER
+chmod +x ~/.xprofile
+sudo systemctl restart lightdm
+#+end_src
+This is how it works on mine☺️.
+
+
+* SETUP OF QEMU FOR LAB
+
+To set up QEMU with SPICE, Virt-Manager, QuickEmu, KVM, and Libvirt for virtual machines follow these steps:
+** Step 1: Install Required Packages 
+#+begin_src sh
+sudo pacman -Syu qemu libvirt virt-manager dnsmasq vde2 bridge-utils openbsd-netcat ebtables iptables quickemu spice-vdagent spice gtk-vnc
+sudo pacman -S qemu libvirt dnsmasq virt-manager ebtables iptables
+
+#+end_src
+** Package Explanation
+
+    qemu: The QEMU emulator.
+    libvirt: Provides virtualization management.
+    virt-manager: GUI for managing virtual machines.
+    dnsmasq: Required for network management.
+    vde2, bridge-utils: Networking tools for virtual machines.
+    openbsd-netcat: Required for some networking functions.
+    ebtables, iptables: Network packet filtering.
+    quickemu: QuickEmu, a simpler way to manage QEMU VMs.
+    spice-vdagent, spice: Enables SPICE support for remote display.
+    gtk-vnc: GUI VNC support.
+** Step 2: Enable and Start Services
+#+begin_src sh
+sudo systemctl enable --now libvirtd
+lsmod | grep kvm
+
+#+end_src
+** Step 3: Add User to the libvirt and kvm Groups
+#+begin_src sh
+sudo usermod -aG libvirt,kvm $USER
+newgrp libvirt
+
+#+end_src
+** Step 4: Configure Networking (Optional)
+#+begin_src sh
+sudo virsh net-start default
+sudo virsh net-autostart default
+
+#+end_src
+** Step 5: Verify Installation
+#+begin_src sh
+sudo systemctl status libvirtd
+virt-host-validate
+
+
+#+end_src
+
+** ChatGPT said
+
+The output from virt-host-validate indicates that most of the checks are passing, but there are a couple of warnings and failures that need addressing:
+Warnings:
+
+    IOMMU appears to be disabled in the kernel
+    This warning suggests that IOMMU (Input-Output Memory Management Unit) is disabled. This is generally used for better isolation between virtual machines and the host system. It is recommended to enable it in your system's boot parameters.
+
+    Fix:
+        Edit your boot loader configuration (e.g., GRUB).
+
+    For GRUB:
+        Open the GRUB configuration file:
+
+sudo nano /etc/default/grub
+
+Find the line starting with GRUB_CMDLINE_LINUX_DEFAULT and add intel_iommu=on (for Intel CPUs) or amd_iommu=on (for AMD CPUs). Example for Intel CPUs:
+
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash intel_iommu=on"
+
+Save the file and update GRUB:
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+Reboot your system for the changes to take effect.
